@@ -1840,10 +1840,12 @@ td.col-amount:focus {
 
   @page {
     size: A4 portrait;
-    margin: 12mm 15mm;
+    margin: 0;
   }
 
   html, body {
+    margin: 0 !important;
+    padding: 0 !important;
     background-color: #ffffff !important;
     color: #0f172a;
     -webkit-print-color-adjust: exact !important;
@@ -1876,14 +1878,17 @@ td.col-amount:focus {
 
   .quote-document-container {
     margin: 0 !important;
-    padding: 0 !important;
+    padding: 12mm 15mm !important;
+    box-sizing: border-box !important;
     display: block !important;
+    width: 100% !important;
   }
 
   .quote-sheet {
     box-shadow: none !important;
     border: none !important;
     padding: 0 !important;
+    margin: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
     -webkit-print-color-adjust: exact !important;
