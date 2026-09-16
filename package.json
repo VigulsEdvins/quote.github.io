@@ -1,0 +1,11 @@
+{
+  "name": "quote-writer-app",
+  "version": "1.0.0",
+  "description": "Personal Quote Writer - Instant professional branded quotes",
+  "scripts": {
+    "dev": "npx -y serve -l 3000 ."
+  },
+  "keywords": ["quotes", "generator", "contractor", "invoice"],
+  "author": "",
+  "license": "ISC"
+}

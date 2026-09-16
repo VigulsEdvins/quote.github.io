@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quote Writer - Instant Branded Quotes</title>
+  <meta name="description" content="Generate full branded professional quotes in 30 seconds for any trade or construction job.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="alternate icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="favicon.png">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=8">
+</head>
+<body>
+  <!-- Top Navigation Header -->
+  <header class="app-topbar no-print">
+    <div class="topbar-container">
+      <div class="topbar-brand" id="nav-brand-btn" role="button" tabindex="0" title="Return to Home / Setup">
+        <div class="brand-monogram">Q</div>
+        <div class="brand-info">
+          <span class="brand-name">Quote<span class="brand-highlight">Writer</span></span>
+          <span class="brand-badge" data-i18n="brand_badge">by Viguls</span>
+        </div>
+      </div>
+      <div class="topbar-nav">
+        <button type="button" class="nav-btn active" id="nav-setup-tab" data-i18n="nav_setup">1. Letterhead</button>
+        <button type="button" class="nav-btn" id="nav-gen-tab" data-i18n="nav_generator">2. Create Quote</button>
+        <button type="button" class="nav-btn" id="nav-quote-tab" data-i18n="nav_quote" disabled>3. Quote Preview</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Toast Notification Container -->
+  <div id="toast" class="toast hidden no-print" role="alert" aria-live="polite"></div>
+
+  <!-- Unsaved Changes Confirmation Modal -->
+  <div id="unsaved-modal" class="modal-backdrop hidden no-print" role="dialog" aria-modal="true" aria-labelledby="unsaved-modal-title">
+    <div class="modal-dialog">
+      <button type="button" class="modal-close-btn" id="modal-close-icon" aria-label="Close">&times;</button>
+      <div class="modal-icon-badge">
+        <span class="modal-icon">⚠️</span>
+      </div>
+      <div class="modal-content">
+        <h3 class="modal-title" id="unsaved-modal-title" data-i18n="modal_unsaved_title">Unsaved Changes</h3>
+        <p class="modal-description" id="unsaved-modal-desc" data-i18n="modal_unsaved_desc_step1">
+          You made changes to your Letterhead settings. Would you like to save changes and recreate your quote, or discard them?
+        </p>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-modal-save" id="modal-btn-save">
+          <span class="modal-btn-icon">💾</span> <span id="modal-btn-save-text" data-i18n="modal_btn_save_recreate">Save & Recreate Quote</span>
+        </button>
+        <button type="button" class="btn-modal-discard" id="modal-btn-discard">
+          <span class="modal-btn-icon">↩️</span> <span id="modal-btn-discard-text" data-i18n="modal_btn_discard">Discard Changes</span>
+        </button>
+        <button type="button" class="btn-modal-cancel" id="modal-btn-cancel" data-i18n="modal_btn_cancel">
+          Keep Editing
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <main class="main-content">
+    
+    <!-- ========================================== -->
+    <!-- VIEW 1: ONBOARDING / SETUP (SCREEN 1)       -->
+    <!-- ========================================== -->
+    <section id="view-setup" class="page-view active">
+      <div class="page-header">
+        <h1 class="page-title" data-i18n-html="setup_title">Get your <span class="highlight-teal">personal Quote Writer</span></h1>
+        <p class="page-subtitle" data-i18n="setup_subtitle">
+          Set it up once. Bookmark the URL. Use it for every job — type 1 line, get a full branded quote in 30 seconds. Free forever.
+        </p>
+      </div>
+
+      <div class="card form-card">
+        <!-- Bookmark notice box -->
+        <div class="callout-box callout-gift">
+          <span class="callout-icon">🎁</span>
+          <div class="callout-text" data-i18n-html="setup_callout_1">
+            After this form, you get a personal URL pre-filled with your details. That's <strong>YOUR</strong> tool — bookmark it.
+          </div>
+        </div>
+
+        <form id="setup-form" autocomplete="on">
+          <!-- Business Name -->
+          <div class="form-group">
+            <label for="business_name" class="form-label" data-i18n-html="business_name_label">
+              Business name <span class="required">*</span>
+            </label>
+            <input type="text" id="business_name" name="business_name" class="form-control" placeholder="e.g. Smith Carpentry Ltd" data-i18n-placeholder="business_name_placeholder" required>
+            <span class="form-hint" data-i18n="business_name_hint">This appears on every quote header — exactly as you want clients to see it.</span>
+          </div>
+
+          <!-- Email & Phone -->
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label for="user_email" class="form-label" data-i18n-html="user_email_label">
+                Your email <span class="required">*</span>
+              </label>
+              <input type="email" id="user_email" name="user_email" class="form-control" placeholder="you@business.com" data-i18n-placeholder="user_email_placeholder" required>
+            </div>
+            <div class="form-group">
+              <label for="user_phone" class="form-label" data-i18n-html="user_phone_label">
+                Phone <span class="required">*</span>
+              </label>
+              <input type="tel" id="user_phone" name="user_phone" class="form-control" placeholder="+371 29 _ _ _ _ _ _" data-i18n-placeholder="user_phone_placeholder" required>
+            </div>
+          </div>
+
+          <!-- Industry / Trade -->
+          <div class="form-group">
+            <label for="industry_trade" class="form-label" data-i18n-html="industry_label">
+              Industry / trade <span class="required">*</span>
+            </label>
+            <div class="select-wrapper">
+              <select id="industry_trade" name="industry_trade" class="form-control form-select" required>
+                <option value="" disabled selected>Choose one...</option>
+
+                <!-- 1. Information Technology & Digital -->
+                <optgroup label="Information Technology (IT) & Digital" data-i18n-label="group_it_digital">
+                  <option value="Web design & development">Web design & development</option>
+                  <option value="Software & mobile app development">Software & mobile app development</option>
+                  <option value="IT support, networking & systems">IT support, networking & systems</option>
+                  <option value="Cloud infrastructure & cybersecurity">Cloud infrastructure & cybersecurity</option>
+                  <option value="UI/UX design & digital media">UI/UX design & digital media</option>
+                </optgroup>
+
+                <!-- 2. Construction & Structural Works -->
+                <optgroup label="Construction & Structural Works" data-i18n-label="group_construction">
+                  <option value="General contracting & renovation">General contracting & renovation</option>
+                  <option value="Masonry & brickwork">Masonry & brickwork</option>
+                  <option value="Concrete & foundations">Concrete & foundations</option>
+                  <option value="Civil engineering & excavation">Civil engineering & excavation</option>
+                  <option value="Demolition & site clearance">Demolition & site clearance</option>
+                </optgroup>
+
+                <!-- 3. Specialist Trades & Interiors -->
+                <optgroup label="Specialist Trades & Interiors" data-i18n-label="group_trades_interiors">
+                  <option value="Carpentry & joinery">Carpentry & joinery</option>
+                  <option value="Roofing & exterior">Roofing & exterior</option>
+                  <option value="Kitchen & bathroom remodeling">Kitchen & bathroom remodeling</option>
+                  <option value="Painting & decorating">Painting & decorating</option>
+                  <option value="Plastering & drywall">Plastering & drywall</option>
+                  <option value="Flooring & tiling">Flooring & tiling</option>
+                  <option value="Windows, doors & glazing">Windows, doors & glazing</option>
+                </optgroup>
+
+                <!-- 4. Mechanical, Electrical & Energy (MEP) -->
+                <optgroup label="Electrical, Plumbing & HVAC (MEP)" data-i18n-label="group_mep_energy">
+                  <option value="Electrical & smart home">Electrical & smart home</option>
+                  <option value="Plumbing & heating">Plumbing & heating</option>
+                  <option value="HVAC & air conditioning">HVAC & air conditioning</option>
+                  <option value="Solar & renewable energy">Solar & renewable energy</option>
+                </optgroup>
+
+                <!-- 5. Outdoor, Metal & Fencing -->
+                <optgroup label="Landscaping, Metal & Fencing" data-i18n-label="group_outdoor_metal">
+                  <option value="Landscaping & decking">Landscaping & decking</option>
+                  <option value="Fencing & gates">Fencing & gates</option>
+                  <option value="Metalwork & welding">Metalwork & welding</option>
+                </optgroup>
+
+                <!-- 6. Facility & Property Services -->
+                <optgroup label="Facility & Property Services" data-i18n-label="group_property_facility">
+                  <option value="Property maintenance & handyman">Property maintenance & handyman</option>
+                  <option value="Commercial & post-construction cleaning">Commercial & post-construction cleaning</option>
+                </optgroup>
+              </select>
+            </div>
+          </div>
+
+          <!-- Region, Currency, VAT -->
+          <div class="form-row three-col">
+            <div class="form-group">
+              <label for="business_region" class="form-label" data-i18n-html="region_label">
+                Region <span class="required">*</span>
+              </label>
+              <div class="select-wrapper">
+                <select id="business_region" name="business_region" class="form-control form-select" required>
+                  <option value="" disabled selected>Choose...</option>
+                  <option value="Latvia">Latvia</option>
+                  <option value="United Kingdom">United Kingdom</option>
+                  <option value="Germany">Germany</option>
+                  <option value="Ireland">Ireland</option>
+                  <option value="Netherlands">Netherlands</option>
+                  <option value="United States">United States</option>
+                  <option value="Australia">Australia</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="currency" class="form-label" data-i18n="currency_label">Currency</label>
+              <div class="select-wrapper">
+                <select id="currency" name="currency" class="form-control form-select">
+                  <option value="EUR" data-symbol="€" selected>EUR (€)</option>
+                  <option value="GBP" data-symbol="£">GBP (£)</option>
+                  <option value="USD" data-symbol="$">USD ($)</option>
+                  <option value="AUD" data-symbol="A$">AUD (A$)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="vat_rate" class="form-label" data-i18n="vat_label">VAT (auto by region)</label>
+              <div class="select-wrapper">
+                <select id="vat_rate" name="vat_rate" class="form-control form-select">
+                  <option value="21" selected>21% (LV, NL, CZ)</option>
+                  <option value="20">20% (UK, FR)</option>
+                  <option value="19">19% (DE)</option>
+                  <option value="23">23% (IE, PL)</option>
+                  <option value="0">0% (Zero-rated / No VAT)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Job Size & Quote Language -->
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label for="avg_job_size" class="form-label" data-i18n-html="avg_job_size_label">
+                Average job size <span class="required">*</span>
+              </label>
+              <div class="select-wrapper">
+                <select id="avg_job_size" name="avg_job_size" class="form-control form-select" required>
+                  <option value="" disabled selected>Choose...</option>
+                  <option value="Under €2,500">Under €2,500</option>
+                  <option value="€2,500 - €10,000">€2,500 - €10,000</option>
+                  <option value="€10,000 - €50,000">€10,000 - €50,000</option>
+                  <option value="€50,000+">€50,000+</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="quote_language" class="form-label" data-i18n-html="quote_language_label">Quote language <span class="required">*</span></label>
+              <div class="select-wrapper">
+                <select id="quote_language" name="quote_language" class="form-control form-select">
+                  <option value="English" selected>English</option>
+                  <option value="Latvian">Latvian (Latviešu)</option>
+                  <option value="German">German (Deutsch)</option>
+                  <option value="Spanish">Spanish (Español)</option>
+                  <option value="French">French (Français)</option>
+                  <option value="Russian">Russian (Русский)</option>
+                  <option value="Lithuanian">Lithuanian (Lietuvių)</option>
+                  <option value="Estonian">Estonian (Eesti)</option>
+                  <option value="Polish">Polish (Polski)</option>
+                </select>
+              </div>
+              <span class="form-hint" data-i18n="quote_language_hint">Your quotes will be generated in this language.</span>
+            </div>
+          </div>
+
+          <!-- Section Divider: LETTERHEAD -->
+          <div class="section-divider">
+            <span class="divider-line"></span>
+            <span class="divider-text" data-i18n-html="letterhead_divider">YOUR LETTERHEAD · <span class="highlight-teal">FOR BRANDED QUOTES</span></span>
+            <span class="divider-line"></span>
+          </div>
+
+          <!-- Letterhead Callout -->
+          <div class="callout-box callout-gift">
+            <span class="callout-icon">🎁</span>
+            <div class="callout-text" data-i18n-html="setup_callout_2">
+              <strong>Adds to every quote you generate.</strong> Logo, license, insurance — makes your quotes look like a €5K-a-month branding agency built them. Skip any field, you can always edit later via the ⚙ icon.
+            </div>
+          </div>
+
+          <!-- Logo URL -->
+          <div class="form-group">
+            <label for="logo_url" class="form-label" data-i18n-html="logo_url_label">
+              Logo URL <span class="optional-tag">OPTIONAL</span>
+            </label>
+            <input type="url" id="logo_url" name="logo_url" class="form-control" placeholder="https://yoursite.com/logo.png" data-i18n-placeholder="logo_url_placeholder">
+            <span class="form-hint" data-i18n="logo_url_hint">Public URL to your logo (square ≥200px works best). Skip — we use a coloured monogram from your business name.</span>
+          </div>
+
+          <!-- Business Address -->
+          <div class="form-group">
+            <label for="business_address" class="form-label" data-i18n-html="business_address_label">
+              Business address <span class="optional-tag">OPTIONAL</span>
+            </label>
+            <textarea id="business_address" name="business_address" class="form-control textarea-sm" rows="2" placeholder="e.g. 12 High Street, Manchester, M1 2AB, United Kingdom" data-i18n-placeholder="business_address_placeholder"></textarea>
+          </div>
+
+          <!-- License & Tax # -->
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label for="license_number" class="form-label" data-i18n-html="license_number_label">
+                License / Reg. # <span class="optional-tag">OPTIONAL</span>
+              </label>
+              <input type="text" id="license_number" name="license_number" class="form-control" placeholder="e.g. Reg. 12345678" data-i18n-placeholder="license_number_placeholder">
+            </div>
+            <div class="form-group">
+              <label for="tax_id" class="form-label" data-i18n-html="tax_id_label">
+                VAT / Tax # <span class="optional-tag">OPTIONAL</span>
+              </label>
+              <input type="text" id="tax_id" name="tax_id" class="form-control" placeholder="e.g. LV40003123456" data-i18n-placeholder="tax_id_placeholder">
+            </div>
+          </div>
+
+          <!-- Insurance Details -->
+          <div class="form-group">
+            <label for="insurance_details" class="form-label" data-i18n-html="insurance_details_label">
+              Insurance details <span class="optional-tag">OPTIONAL</span>
+            </label>
+            <input type="text" id="insurance_details" name="insurance_details" class="form-control" placeholder="e.g. Public liability £2,000,000 (NIG)" data-i18n-placeholder="insurance_details_placeholder">
+          </div>
+
+          <!-- Trade Memberships -->
+          <div class="form-group">
+            <label for="trade_memberships" class="form-label" data-i18n-html="trade_memberships_label">
+              Trade memberships / certifications <span class="optional-tag">OPTIONAL</span>
+            </label>
+            <input type="text" id="trade_memberships" name="trade_memberships" class="form-control" placeholder="e.g. NICEIC · Gas Safe 7654321 · FMB Member" data-i18n-placeholder="trade_memberships_placeholder">
+          </div>
+
+          <!-- Tagline -->
+          <div class="form-group">
+            <label for="business_tagline" class="form-label" data-i18n-html="tagline_label">
+              Tagline below business name <span class="optional-tag">OPTIONAL</span>
+            </label>
+            <input type="text" id="business_tagline" name="business_tagline" class="form-control" placeholder="e.g. Roofing specialists since 2014" data-i18n-placeholder="tagline_placeholder">
+          </div>
+
+          <!-- Website & Brand Colour -->
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label for="business_website" class="form-label" data-i18n-html="website_label">
+                Website <span class="optional-tag">OPTIONAL</span>
+              </label>
+              <input type="text" id="business_website" name="business_website" class="form-control" placeholder="e.g. www.yourtrade.com" data-i18n-placeholder="website_placeholder">
+            </div>
+            <div class="form-group">
+              <label for="brand_color" class="form-label" data-i18n-html="brand_color_label">
+                Brand colour <span class="optional-tag">OPTIONAL</span>
+              </label>
+              <div class="color-picker-wrapper">
+                <input type="color" id="brand_color" name="brand_color" class="color-input" value="#0b5e55">
+                <div class="color-preview-box" id="color-preview" style="background-color: #0b5e55;"></div>
+                <span class="color-label" id="color-hex-label">#0b5e55</span>
+              </div>
+              <span class="form-hint" data-i18n="brand_color_hint">Used for quote header accents. Defaults to Viguls teal.</span>
+            </div>
+          </div>
+
+          <div class="divider-subtle"></div>
+
+          <!-- Consent Checkbox -->
+          <div class="form-checkbox-group">
+            <label class="checkbox-container">
+              <input type="checkbox" id="terms_agree" required checked>
+              <span class="checkmark"></span>
+              <span class="checkbox-label" data-i18n-html="agree_consent">
+                I agree Viguls can email me my tool link and follow up about marketing systems. <a href="#privacy" class="text-link" id="privacy-link">Privacy</a>
+              </span>
+            </label>
+          </div>
+
+          <!-- Submit CTA Button -->
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary btn-block" data-i18n="btn_get_tool">
+              Get My Personal Tool →
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- VIEW 2: QUOTE INPUT / GENERATOR (SCREEN 3 & 5) -->
+    <!-- ========================================== -->
+    <section id="view-generator" class="page-view">
+      <!-- Pre-filled banner -->
+      <div class="callout-box callout-generator">
+        <span class="callout-icon">⚡</span>
+        <div class="callout-text" data-i18n-html="gen_callout">
+          <strong>Your tool · pre-filled</strong><br>
+          Type the job. Add optional details if you want them on the quote. Generates in 30 seconds.
+        </div>
+      </div>
+
+      <!-- Personal Bookmarkable Tool Link Card -->
+      <div class="personal-link-card" id="personal-link-card">
+        <div class="personal-link-header">
+          <div class="personal-link-title-group">
+            <span class="personal-link-badge">🔗</span>
+            <div>
+              <div class="personal-link-title-row">
+                <strong class="personal-link-title" data-i18n="personal_link_title">Your Personal Tool URL</strong>
+                <span class="personal-link-saved-tag" data-i18n="letterhead_saved_tag">✓ Letterhead Saved</span>
+              </div>
+              <p class="personal-link-desc" data-i18n="personal_link_desc">
+                Bookmark or save this link on your phone or laptop. Every quote you create will have your branding and letterhead already loaded.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="personal-link-input-group">
+          <input type="text" class="personal-link-input" id="personal-tool-url" readonly value="" spellcheck="false" title="Click to select" />
+          <button type="button" class="btn-copy-link" id="btn-copy-personal-url" data-i18n="btn_copy_link">
+            📋 Copy Link
+          </button>
+        </div>
+      </div>
+
+      <div class="page-header">
+        <h1 class="page-title" id="gen-title-heading" data-i18n-html="gen_title_html">What's the <span class="highlight-teal">next quote,</span> <span id="gen-name-display">Test</span>?</h1>
+        <p class="page-subtitle" data-i18n="gen_subtitle">
+          Just the job is enough. Open "More options" to add client name, project address, custom payment terms, exclusions — anything you want on the quote.
+        </p>
+      </div>
+
+      <div class="card form-card">
+        <form id="generator-form">
+          <!-- Job Description -->
+          <div class="form-group">
+            <label for="job_description" class="form-label" data-i18n-html="job_desc_label">
+              Job description <span class="required">*</span>
+            </label>
+            <textarea id="job_description" name="job_description" class="form-control" rows="3" placeholder="e.g. Rebuild deck 4x6m oak, includes demo of old deck and disposal" data-i18n-placeholder="job_desc_placeholder" required></textarea>
+            <span class="form-hint" data-i18n="job_desc_hint">Include size, materials, location, and any extras. Examples below.</span>
+          </div>
+
+          <!-- Quick Example Chips -->
+          <div class="example-chips-container">
+            <button type="button" class="example-chip" data-desc="Rebuild deck 4x6m oak, includes demo of old deck" data-area="24" data-length="6" data-i18n="chip_deck" data-i18n-desc="chip_deck">
+              Rebuild deck 4x6m oak, includes demo of old deck
+            </button>
+            <button type="button" class="example-chip" data-desc="Install kitchen 5x4m, oak veneer cabinets, integrated appliances" data-area="20" data-pieces="18" data-i18n="chip_kitchen" data-i18n-desc="chip_kitchen">
+              Install kitchen 5x4m, oak veneer cabinets, integrated appliances
+            </button>
+            <button type="button" class="example-chip" data-desc="Bathroom renovation 6m², full strip-out, new tiling, new fixtures" data-area="6" data-pieces="8" data-i18n="chip_bath" data-i18n-desc="chip_bath">
+              Bathroom renovation 6m², full strip-out, new tiling, new fixtures
+            </button>
+            <button type="button" class="example-chip" data-desc="Roof replacement 120m² metal, 3 skylights, gutters included" data-area="120" data-pieces="3" data-length="28" data-i18n="chip_roof" data-i18n-desc="chip_roof">
+              Roof replacement 120m² metal, 3 skylights, gutters included
+            </button>
+            <button type="button" class="example-chip" data-desc="Corporate website with CMS, customer portal, responsive UI and SEO setup" data-pieces="1" data-i18n="chip_it" data-i18n-desc="chip_it">
+              Corporate website with CMS, customer portal, responsive UI and SEO setup
+            </button>
+          </div>
+
+          <!-- Section Divider: Sizing -->
+          <div class="section-divider compact">
+            <span class="divider-line"></span>
+            <span class="divider-text" data-i18n-html="sizing_divider">SIZE OF THE JOB · <span class="highlight-teal">OPTIONAL, MORE ACCURATE</span></span>
+            <span class="divider-line"></span>
+          </div>
+
+          <!-- Sizing Warning Alert -->
+          <div class="callout-box callout-warning">
+            <span class="callout-icon">📐</span>
+            <div class="callout-text" data-i18n-html="sizing_warning">
+              <strong>Fill what applies, skip the rest.</strong> One field is enough. These override anything we read from the description.
+            </div>
+          </div>
+
+          <!-- Sizing Inputs Grid -->
+          <div class="sizing-grid">
+            <div class="form-group">
+              <label for="spec_area" class="form-label" data-i18n="area_label">Area</label>
+              <div class="input-with-unit">
+                <input type="number" id="spec_area" name="spec_area" class="form-control" placeholder="120" min="0" step="any" onkeydown="if(event.key==='-'||event.key==='+'||event.key==='e'||event.key==='E') event.preventDefault()">
+                <span class="unit-badge">m²</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="spec_length" class="form-label" data-i18n="length_label">Length</label>
+              <div class="input-with-unit">
+                <input type="number" id="spec_length" name="spec_length" class="form-control" placeholder="50" min="0" step="any" onkeydown="if(event.key==='-'||event.key==='+'||event.key==='e'||event.key==='E') event.preventDefault()">
+                <span class="unit-badge">m</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="spec_pieces" class="form-label" data-i18n-html="pieces_label_html">Pieces <span class="unit-sub">WINDOWS / TREES / SOCKETS...</span></label>
+              <div class="input-with-unit">
+                <input type="number" id="spec_pieces" name="spec_pieces" class="form-control" placeholder="25" min="0" step="1" onkeydown="if(event.key==='-'||event.key==='+'||event.key==='e'||event.key==='E'||event.key==='.') event.preventDefault()">
+                <span class="unit-badge" data-i18n="unit_pcs">pcs</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="spec_volume" class="form-label" data-i18n="volume_label">Volume</label>
+              <div class="input-with-unit">
+                <input type="number" id="spec_volume" name="spec_volume" class="form-control" placeholder="50" min="0" step="any" onkeydown="if(event.key==='-'||event.key==='+'||event.key==='e'||event.key==='E') event.preventDefault()">
+                <span class="unit-badge">m³</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="spec_system_size" class="form-label" data-i18n-html="system_size_label_html">System size <span class="unit-sub">SOLAR</span></label>
+              <div class="input-with-unit">
+                <input type="number" id="spec_system_size" name="spec_system_size" class="form-control" placeholder="6" min="0" step="any" onkeydown="if(event.key==='-'||event.key==='+'||event.key==='e'||event.key==='E') event.preventDefault()">
+                <span class="unit-badge">kWp</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="payment_style" class="form-label" data-i18n="payment_style_label">Payment style</label>
+              <div class="select-wrapper">
+                <select id="payment_style" name="payment_style" class="form-control form-select">
+                  <option value="auto" selected>Auto (pick by job size)</option>
+                  <option value="deposit-stages">Deposit & milestone staged</option>
+                  <option value="50-50">50% upfront / 50% upon completion</option>
+                  <option value="completion">100% upon completion</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Client Type & Urgency -->
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label for="client_type" class="form-label" data-i18n="client_type_label">Client type</label>
+              <div class="select-wrapper">
+                <select id="client_type" name="client_type" class="form-control form-select">
+                  <option value="new" selected>New client</option>
+                  <option value="returning">Returning client</option>
+                  <option value="commercial">Commercial / Property manager</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="job_urgency" class="form-label" data-i18n="urgency_label">Urgency</label>
+              <div class="select-wrapper">
+                <select id="job_urgency" name="job_urgency" class="form-control form-select">
+                  <option value="normal" selected>Normal scheduling</option>
+                  <option value="urgent">Urgent priority (next 48h)</option>
+                  <option value="flexible">Flexible / Next month</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Accordion Group -->
+          <div class="accordion-group">
+            <!-- Accordion 1: Client Info -->
+            <div class="accordion-item" id="acc-client">
+              <button type="button" class="accordion-header" aria-expanded="false">
+                <span class="acc-title" data-i18n-html="acc_client_info_html">
+                  <span class="acc-icon">👤</span> Client info
+                </span>
+                <span class="acc-caret">▼</span>
+              </button>
+              <div class="accordion-body">
+                <div class="form-row two-col">
+                  <div class="form-group">
+                    <label for="client_name" class="form-label" data-i18n-html="client_name_label">
+                      Client name <span class="optional-tag">OPTIONAL</span>
+                    </label>
+                    <input type="text" id="client_name" name="client_name" class="form-control" placeholder="e.g. John Smith / SIA ABC" data-i18n-placeholder="client_name_placeholder">
+                  </div>
+                  <div class="form-group">
+                    <label for="quote_reference" class="form-label" data-i18n-html="quote_ref_label">
+                      Reference / PO # <span class="optional-tag">OPTIONAL</span>
+                    </label>
+                    <input type="text" id="quote_reference" name="quote_reference" class="form-control" placeholder="e.g. INQ-2026-042" data-i18n-placeholder="quote_ref_placeholder">
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="site_address" class="form-label" data-i18n-html="site_address_label">
+                    Project / site address <span class="optional-tag">OPTIONAL</span>
+                  </label>
+                  <textarea id="site_address" name="site_address" class="form-control textarea-sm" rows="2" placeholder="e.g. 12 Brivibas iela, Riga, LV-1011" data-i18n-placeholder="site_address_placeholder"></textarea>
+                  <span class="form-hint" data-i18n="site_address_hint">If different from the client's billing address, put the site address here.</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Accordion 2: Timeline & Payment Terms -->
+            <div class="accordion-item" id="acc-timeline">
+              <button type="button" class="accordion-header" aria-expanded="false">
+                <span class="acc-title" data-i18n-html="acc_timeline_html">
+                  <span class="acc-icon">📅</span> Timeline & payment terms
+                </span>
+                <span class="acc-caret">▼</span>
+              </button>
+              <div class="accordion-body">
+                <div class="form-row two-col">
+                  <div class="form-group">
+                    <label for="start_date" class="form-label" data-i18n-html="start_date_label">
+                      Estimated start date <span class="optional-tag">OPTIONAL</span>
+                    </label>
+                    <input type="date" id="start_date" name="start_date" class="form-control">
+                  </div>
+                  <div class="form-group">
+                    <label for="estimated_duration" class="form-label" data-i18n-html="duration_label">
+                      Estimated duration <span class="optional-tag">OPTIONAL</span>
+                    </label>
+                    <input type="text" id="estimated_duration" name="estimated_duration" class="form-control" placeholder="e.g. 5 working days" data-i18n-placeholder="duration_placeholder">
+                    <span class="form-hint" data-i18n="duration_hint">Leave blank to use a generic "from start" timeline.</span>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="custom_payment_schedule" class="form-label" data-i18n-html="custom_payment_label">
+                    Custom payment schedule <span class="optional-tag">OPTIONAL · OVERRIDES DEFAULT</span>
+                  </label>
+                  <textarea id="custom_payment_schedule" name="custom_payment_schedule" class="form-control textarea-sm" rows="2" placeholder="e.g. 25% deposit on acceptance · 35% at framing · 25% at first fix · 15% on completion" data-i18n-placeholder="custom_payment_placeholder"></textarea>
+                  <span class="form-hint" data-i18n="custom_payment_hint">We pick smart defaults by job size. Type your own here to override.</span>
+                </div>
+
+                <div class="form-group">
+                  <label for="custom_warranty" class="form-label" data-i18n-html="custom_warranty_label">
+                    Custom warranty <span class="optional-tag">OPTIONAL · OVERRIDES DEFAULT</span>
+                  </label>
+                  <input type="text" id="custom_warranty" name="custom_warranty" class="form-control" placeholder="e.g. 5-year workmanship warranty on roofing, 2 years on flashings" data-i18n-placeholder="custom_warranty_placeholder">
+                </div>
+              </div>
+            </div>
+
+            <!-- Accordion 3: Inclusions, exclusions, assumptions -->
+            <div class="accordion-item" id="acc-inclusions">
+              <button type="button" class="accordion-header" aria-expanded="false">
+                <span class="acc-title" data-i18n-html="acc_inclusions_html">
+                  <span class="acc-icon">📋</span> Inclusions, exclusions, assumptions
+                </span>
+                <span class="acc-caret">▼</span>
+              </button>
+              <div class="accordion-body">
+                <div class="form-group">
+                  <label for="custom_inclusions" class="form-label" data-i18n-html="included_label">
+                    What's INCLUDED <span class="optional-tag">ONE PER LINE · OVERRIDES INDUSTRY DEFAULTS</span>
+                  </label>
+                  <textarea id="custom_inclusions" name="custom_inclusions" class="form-control" rows="3" placeholder="Site preparation and protective covering&#10;All materials and fixings&#10;Two-coat finish&#10;Cleanup and waste removal" data-i18n-placeholder="included_placeholder"></textarea>
+                </div>
+
+                <div class="form-group">
+                  <label for="custom_exclusions" class="form-label" data-i18n-html="excluded_label">
+                    What's NOT INCLUDED <span class="optional-tag">ONE PER LINE · OVERRIDES INDUSTRY DEFAULTS</span>
+                  </label>
+                  <textarea id="custom_exclusions" name="custom_exclusions" class="form-control" rows="3" placeholder="Leave blank to use sensible defaults.&#10;Or write your own:&#10;Building permits and council fees&#10;Hazardous material removal" data-i18n-placeholder="excluded_placeholder"></textarea>
+                </div>
+
+                <div class="form-group">
+                  <label for="custom_assumptions" class="form-label" data-i18n-html="assumptions_label">
+                    Assumptions <span class="optional-tag">ONE PER LINE · OVERRIDES DEFAULTS</span>
+                  </label>
+                  <textarea id="custom_assumptions" name="custom_assumptions" class="form-control" rows="3" placeholder="Leave blank to use sensible defaults.&#10;Or write your own:&#10;Reasonable site access and parking available&#10;Power and water on-site" data-i18n-placeholder="assumptions_placeholder"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- Accordion 4: Cover note -->
+            <div class="accordion-item" id="acc-covernote">
+              <button type="button" class="accordion-header" aria-expanded="false">
+                <span class="acc-title" data-i18n-html="acc_covernote_html">
+                  <span class="acc-icon">✉️</span> Cover note for client
+                </span>
+                <span class="acc-caret">▼</span>
+              </button>
+              <div class="accordion-body">
+                <div class="form-group">
+                  <label for="cover_note" class="form-label" data-i18n-html="covernote_label">
+                    Personal note that appears at top of quote <span class="optional-tag">OPTIONAL</span>
+                  </label>
+                  <textarea id="cover_note" name="cover_note" class="form-control" rows="3" placeholder="e.g. Thanks for inviting us to quote. Pricing below reflects the spec we discussed during our site visit on Tuesday. Happy to walk through any line — just hit reply." data-i18n-placeholder="covernote_placeholder"></textarea>
+                  <span class="form-hint" data-i18n="covernote_hint">Adds a friendly intro paragraph above the quote details. Skips if blank.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Submit CTA -->
+          <div class="form-actions mt-6">
+            <button type="submit" class="btn btn-primary btn-block" id="btn-generate-quote" data-i18n="btn_generate_quote">
+              Generate My Quote →
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- VIEW 3: LOADING STATE (SCREEN 2)            -->
+    <!-- ========================================== -->
+    <section id="view-loading" class="page-view">
+      <div class="card loading-card">
+        <div class="spinner-container">
+          <svg class="circular-spinner" viewBox="0 0 50 50">
+            <circle class="spinner-bg" cx="25" cy="25" r="20" fill="none" stroke-width="3.5" />
+            <circle class="spinner-path" cx="25" cy="25" r="20" fill="none" stroke-width="3.5" stroke-linecap="round" />
+          </svg>
+        </div>
+        <h2 class="loading-title" data-i18n="loading_title">Building your quote...</h2>
+        <p class="loading-subtitle" data-i18n-html="loading_subtitle">
+          Calculating materials, labor hours, regional pricing,<br>payment milestones, and T&amp;Cs.
+        </p>
+        <div class="loading-status-ticker" id="loading-status" data-i18n="loading_step_1">
+          Analysing the job...
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- VIEW 4: BRANDED QUOTE SHEET (SCREEN 4)      -->
+    <!-- ========================================== -->
+    <section id="view-quote" class="page-view">
+      <!-- Quote Ready Action Bar -->
+      <div class="quote-action-bar no-print">
+        <div class="action-bar-left">
+          <div class="ready-check-icon">✓</div>
+          <div class="ready-texts">
+            <div class="ready-title" data-i18n="ready_title">Your quote is ready</div>
+            <div class="ready-subtitle" data-i18n="ready_subtitle">Tip: click any line to edit it before printing/sending.</div>
+          </div>
+        </div>
+        <div class="action-bar-right">
+          <button type="button" class="btn-action" id="btn-print-pdf" data-i18n="btn_print">
+            🖨️ Print / PDF
+          </button>
+          <button type="button" class="btn-action" id="btn-copy-email" data-i18n="btn_email">
+            📋 Copy as email
+          </button>
+          <button type="button" class="btn-action" id="btn-share-tool-link" data-i18n="btn_share_link">
+            🔗 Personal link
+          </button>
+          <button type="button" class="btn-action" id="btn-new-quote" data-i18n="btn_new_quote">
+            + New quote
+          </button>
+          <button type="button" class="btn-action btn-gold" id="btn-edit-letterhead" data-i18n="btn_edit_letterhead">
+            ⚙️ Edit letterhead
+          </button>
+        </div>
+      </div>
+
+      <!-- Printable A4 Quote Document Sheet -->
+      <div class="quote-document-container">
+        <article class="quote-sheet" id="printable-quote">
+          
+          <!-- Document Header -->
+          <header class="doc-header">
+            <div class="doc-header-left">
+              <div class="brand-monogram-box" id="doc-monogram">T</div>
+              <div class="doc-brand-details">
+                <h2 class="doc-company-name" id="doc-company-name" contenteditable="true">Test Edvin</h2>
+                <div class="doc-company-sub" id="doc-company-sub" contenteditable="true">General contracting &amp; renovation · Latvia</div>
+                <div class="doc-company-contact">
+                  <span id="doc-phone-display" contenteditable="true">T 22029365</span>
+                  <span class="contact-sep"></span>
+                  <span id="doc-email-display" contenteditable="true">E edvinsviguls@gmail.com</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="doc-header-right">
+              <div class="quote-badge" data-i18n="quote_badge">QUOTE</div>
+              <div class="quote-meta-number" id="doc-quote-number" contenteditable="true">2026-0003</div>
+              <div class="quote-meta-date"><span data-i18n="date_label">Date</span> <strong id="doc-quote-date">16 Sept 2026</strong></div>
+              <div class="quote-meta-valid"><span data-i18n="valid_label">Valid</span> <strong id="doc-quote-valid">14 days</strong></div>
+            </div>
+          </header>
+
+          <!-- Dual Accent Line -->
+          <div class="doc-accent-bar">
+            <div class="accent-segment yellow"></div>
+            <div class="accent-segment teal" id="doc-accent-teal"></div>
+          </div>
+
+          <!-- Edit Instruction Pill (hidden when printed) -->
+          <div class="doc-edit-hint no-print" data-i18n-html="click_to_edit_hint">
+            <span class="hint-pencil">✏️</span> Click any field below to edit before printing
+          </div>
+
+          <!-- Recipient & Meta Details -->
+          <section class="doc-meta-grid">
+            <div class="meta-column">
+              <div class="meta-label" data-i18n="quote_for_label">QUOTE FOR</div>
+              <div class="meta-value" id="doc-quote-for" contenteditable="true">—</div>
+            </div>
+            <div class="meta-column">
+              <div class="meta-label" data-i18n="reference_label">REFERENCE</div>
+              <div class="meta-value" id="doc-reference" contenteditable="true">—</div>
+            </div>
+          </section>
+
+          <!-- Project Title -->
+          <section class="doc-project-section">
+            <div class="project-label" data-i18n="project_label">PROJECT</div>
+            <h3 class="project-title" id="doc-project-title" contenteditable="true">
+              Rebuild deck 4×6m oak, includes demo of old deck
+            </h3>
+            <div id="doc-cover-note-container" class="doc-cover-note hidden">
+              <p id="doc-cover-note-text" contenteditable="true"></p>
+            </div>
+          </section>
+
+          <!-- Materials Section -->
+          <section class="doc-table-section">
+            <div class="section-heading-row">
+              <span class="bullet-dot">●</span>
+              <h4 class="section-title-text" data-i18n="materials_heading">MATERIALS</h4>
+            </div>
+
+            <table class="doc-table" id="materials-table">
+              <thead>
+                <tr>
+                  <th class="col-item" data-i18n="col_item">ITEM</th>
+                  <th class="col-qty" data-i18n="col_qty">QTY</th>
+                  <th class="col-amount" data-i18n="col_amount">AMOUNT</th>
+                  <th class="col-action no-print"></th>
+                </tr>
+              </thead>
+              <tbody id="materials-tbody">
+                <!-- Dynamically populated rows -->
+              </tbody>
+            </table>
+
+            <button type="button" class="btn-add-line no-print" id="btn-add-material" data-i18n="btn_add_material">
+              + Add material line
+            </button>
+          </section>
+
+          <!-- Labour Section -->
+          <section class="doc-table-section">
+            <div class="section-heading-row">
+              <span class="bullet-dot">●</span>
+              <h4 class="section-title-text" data-i18n="labour_heading">LABOUR</h4>
+            </div>
+
+            <table class="doc-table" id="labour-table">
+              <thead>
+                <tr>
+                  <th class="col-item" data-i18n="col_phase">PHASE</th>
+                  <th class="col-duration" data-i18n="col_duration">DURATION</th>
+                  <th class="col-amount" data-i18n="col_amount">AMOUNT</th>
+                  <th class="col-action no-print"></th>
+                </tr>
+              </thead>
+              <tbody id="labour-tbody">
+                <!-- Dynamically populated rows -->
+              </tbody>
+            </table>
+
+            <button type="button" class="btn-add-line no-print" id="btn-add-labour" data-i18n="btn_add_labour">
+              + Add labour line
+            </button>
+          </section>
+
+          <!-- Financial Calculation Summary -->
+          <section class="doc-totals-section">
+            <div class="totals-spacer"></div>
+            <div class="totals-card">
+              <div class="totals-row">
+                <span class="totals-label" data-i18n="summary_materials_subtotal">Materials subtotal</span>
+                <span class="totals-val" id="summary-materials-subtotal">€13 973</span>
+              </div>
+              <div class="totals-row">
+                <span class="totals-label" data-i18n="summary_labour_subtotal">Labour subtotal</span>
+                <span class="totals-val" id="summary-labour-subtotal">€17 077</span>
+              </div>
+              <div class="totals-row">
+                <span class="totals-label" data-i18n="summary_subtotal">Subtotal</span>
+                <span class="totals-val" id="summary-subtotal">€31 050</span>
+              </div>
+              <div class="totals-row">
+                <span class="totals-label" id="summary-vat-label">VAT (21%)</span>
+                <span class="totals-val" id="summary-vat-amount">€6521</span>
+              </div>
+              <div class="totals-row total-highlight">
+                <span class="total-label" data-i18n="summary_total">TOTAL</span>
+                <span class="total-val" id="summary-grand-total">€37 571</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Scope of Work Section -->
+          <section class="doc-scope-section">
+            <div class="section-heading-row">
+              <span class="bullet-dot">●</span>
+              <h4 class="section-title-text" data-i18n="scope_heading">SCOPE OF WORK</h4>
+            </div>
+
+            <div class="scope-columns">
+              <!-- Included -->
+              <div class="scope-col">
+                <div class="scope-col-header included-header" data-i18n-html="whats_included_html">
+                  <span class="status-icon green-check">✔</span> What's included
+                </div>
+                <ul class="scope-list" id="scope-included-list">
+                  <!-- Dynamically populated inclusions -->
+                </ul>
+                <button type="button" class="btn-add-line no-print" id="btn-add-inclusion" data-i18n="btn_add_inclusion">
+                  + Add inclusion
+                </button>
+              </div>
+
+              <!-- Not Included -->
+              <div class="scope-col">
+                <div class="scope-col-header excluded-header" data-i18n-html="not_included_html">
+                  <span class="status-icon red-cross">✖</span> Not included
+                </div>
+                <ul class="scope-list" id="scope-excluded-list">
+                  <!-- Dynamically populated exclusions -->
+                </ul>
+                <button type="button" class="btn-add-line no-print" id="btn-add-exclusion" data-i18n="btn_add_exclusion">
+                  + Add exclusion
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <!-- Payment Schedule & Notes Footer -->
+          <section class="doc-terms-section" id="doc-terms-block">
+            <div class="doc-terms-inner">
+              <div class="terms-title" data-i18n="payment_terms_title">PAYMENT TERMS &amp; WARRANTY</div>
+              <div class="terms-content" id="doc-payment-terms-text" contenteditable="true">
+                Standard schedule: 25% on acceptance · 40% midway · 35% on final handover.
+                Includes 2-year craftsmanship warranty on all structural elements.
+              </div>
+            </div>
+          </section>
+
+          <!-- Terms & Conditions Section -->
+          <section class="doc-terms-conditions-section">
+            <div class="section-heading-row">
+              <span class="bullet-dot">●</span>
+              <h4 class="section-title-text" data-i18n="tc_heading">TERMS &amp; CONDITIONS</h4>
+            </div>
+            <div class="terms-conditions-card">
+              <ol class="tc-list" id="tc-list-container" contenteditable="true">
+                <li><strong>Validity &amp; Offer:</strong> This quotation remains valid for acceptance for 14 calendar days from the date of issuance.</li>
+                <li><strong>Payment Terms:</strong> Invoices are due per the agreed schedule. Title and ownership of all supplied materials remain with the contractor until the total balance is paid in full.</li>
+                <li><strong>Variations &amp; Additional Work:</strong> Any alterations, extras, or additions requested during the project will be agreed in writing with an itemized price adjustment prior to execution.</li>
+                <li><strong>Site Access &amp; Power:</strong> Client agrees to provide free, safe, and uninterrupted access to the site during agreed hours, including basic power and water supplies.</li>
+                <li><strong>Unforeseen Conditions:</strong> Latent defects, dry rot, structural instability, or hazardous substances (e.g. asbestos) not visible during initial survey are subject to separate quotation.</li>
+                <li><strong>Warranty:</strong> Workmanship is guaranteed for the specified period upon full settlement. Normal wear and tear or accidental client damage are excluded.</li>
+              </ol>
+            </div>
+          </section>
+
+          <!-- Clean Minimal Signatures Section -->
+          <section class="doc-signatures-section doc-signatures-minimal">
+            <div class="signatures-minimal-grid">
+              <div class="sig-col">
+                <div class="sig-line"></div>
+                <div class="sig-label" data-i18n="sig_client_signature">CLIENT SIGNATURE</div>
+                <div class="sig-sub" id="sig-client-sub" contenteditable="true" data-i18n="sig_name_date">Name &amp; date</div>
+              </div>
+              <div class="sig-col">
+                <div class="sig-line"></div>
+                <div class="sig-label" data-i18n="sig_for_contractor">FOR THE CONTRACTOR</div>
+                <div class="sig-sub" id="sig-contractor-name" contenteditable="true">Test Edvin</div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Document Footer -->
+          <footer class="doc-sheet-footer">
+            <div class="footer-legal-line" id="doc-footer-legal">
+              Smith Carpentry Ltd · you@business.com · +371 29 000 000
+            </div>
+            <div class="footer-signoff">
+              <span data-i18n="footer_generated_by">Generated by</span> <span class="footer-brand-highlight">QuoteWriter by Viguls</span>
+            </div>
+          </footer>
+
+        </article>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="i18n.js?v=8"></script>
+  <script src="i18n/es.js?v=8"></script>
+  <script src="i18n/fr.js?v=8"></script>
+  <script src="i18n/ru.js?v=8"></script>
+  <script src="i18n/lt.js?v=8"></script>
+  <script src="i18n/et.js?v=8"></script>
+  <script src="i18n/pl.js?v=8"></script>
+  <script src="app.js?v=8"></script>
+</body>
+</html>
