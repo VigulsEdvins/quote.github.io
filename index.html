@@ -87,6 +87,89 @@
     </div>
   </div>
 
+  <!-- Reusable Item & Price Catalog Drawer -->
+  <div id="catalog-drawer" class="catalog-drawer-backdrop hidden no-print" role="dialog" aria-modal="true" aria-labelledby="catalog-drawer-title">
+    <div class="catalog-drawer-panel">
+      <!-- Drawer Header -->
+      <div class="catalog-drawer-header">
+        <div class="catalog-header-title-group">
+          <span class="catalog-drawer-icon">📦</span>
+          <div>
+            <h3 class="catalog-drawer-title" id="catalog-drawer-title" data-i18n="catalog_title">Item &amp; Price Catalog</h3>
+            <span class="catalog-drawer-sub" data-i18n="catalog_subtitle">1-click insert reusable materials and labor rates</span>
+          </div>
+        </div>
+        <button type="button" class="modal-close-btn" id="catalog-drawer-close" aria-label="Close catalog">&times;</button>
+      </div>
+
+      <!-- Drawer Controls (Search & Category Pills) -->
+      <div class="catalog-drawer-controls">
+        <div class="catalog-search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="catalog-search-input" class="catalog-search-input" placeholder="Search catalog items or rates..." data-i18n-placeholder="catalog_search_placeholder" />
+          <button type="button" class="search-clear-btn hidden" id="catalog-search-clear">×</button>
+        </div>
+        <div class="catalog-filter-pills">
+          <button type="button" class="catalog-filter-pill active" data-cat="all"><span data-i18n="catalog_tab_all">All</span> (<span id="count-cat-all">0</span>)</button>
+          <button type="button" class="catalog-filter-pill" data-cat="material"><span data-i18n="catalog_tab_materials">🧱 Materials</span> (<span id="count-cat-material">0</span>)</button>
+          <button type="button" class="catalog-filter-pill" data-cat="labour"><span data-i18n="catalog_tab_labour">⚡ Labour &amp; Services</span> (<span id="count-cat-labour">0</span>)</button>
+        </div>
+      </div>
+
+      <!-- Add New Item Collapsible Section -->
+      <div class="catalog-add-wrapper">
+        <button type="button" class="catalog-toggle-add-btn" id="btn-toggle-add-catalog">
+          <span id="catalog-add-btn-icon">+</span> <span data-i18n="catalog_btn_toggle_add">Create New Custom Item</span>
+        </button>
+        <form id="catalog-add-form" class="catalog-add-form hidden">
+          <div class="catalog-form-row">
+            <div class="form-group flex-2">
+              <label class="form-label" data-i18n="catalog_label_name">Item Name <span class="required">*</span></label>
+              <input type="text" id="catalog-new-name" class="form-control" placeholder="e.g. Oak decking board 28x145mm" required />
+            </div>
+            <div class="form-group flex-1">
+              <label class="form-label" data-i18n="catalog_label_type">Type <span class="required">*</span></label>
+              <select id="catalog-new-type" class="form-control form-select">
+                <option value="material" data-i18n="catalog_type_material">🧱 Material</option>
+                <option value="labour" data-i18n="catalog_type_labour">⚡ Labour</option>
+              </select>
+            </div>
+          </div>
+          <div class="catalog-form-row">
+            <div class="form-group flex-2">
+              <label class="form-label" data-i18n="catalog_label_sub">Specs / Details <span class="optional-tag">OPTIONAL</span></label>
+              <input type="text" id="catalog-new-sub" class="form-control" placeholder="e.g. Pressure-treated timber, class 4" />
+            </div>
+            <div class="form-group flex-1">
+              <label class="form-label" data-i18n="catalog_label_qty">Default Qty/Duration</label>
+              <input type="text" id="catalog-new-qty" class="form-control" placeholder="e.g. 1 m² or 1 day" />
+            </div>
+            <div class="form-group flex-1">
+              <label class="form-label" data-i18n="catalog_label_price">Default Price (€) <span class="required">*</span></label>
+              <input type="number" id="catalog-new-price" class="form-control" placeholder="e.g. 45" min="0" step="any" required />
+            </div>
+          </div>
+          <div class="catalog-form-actions">
+            <button type="submit" class="btn-action btn-gold" data-i18n="catalog_btn_save_item">💾 Save to Library</button>
+            <button type="button" class="btn-action btn-catalog-cancel" id="btn-cancel-add-catalog" data-i18n="modal_btn_cancel">Cancel</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Catalog Items List Container -->
+      <div class="catalog-items-container" id="catalog-items-list">
+        <!-- Dynamically rendered items -->
+      </div>
+
+      <!-- Empty State inside Catalog -->
+      <div class="catalog-empty-state hidden" id="catalog-empty-state">
+        <div class="catalog-empty-icon">🔍</div>
+        <p class="catalog-empty-title" data-i18n="catalog_empty_title">No items found</p>
+        <p class="catalog-empty-desc" data-i18n="catalog_empty_desc">Try a different search term or add a new item above.</p>
+      </div>
+    </div>
+  </div>
+
   <main class="main-content">
     
     <!-- ========================================== -->
@@ -406,8 +489,8 @@
           <strong>Your tool · pre-filled</strong><br>
           Type the job. Add optional details if you want them on the quote. Generates in 30 seconds.
         </div>
-        <button type="button" class="btn-callout-saved-quotes" id="btn-gen-saved-quotes" data-i18n="gen_view_saved_quotes">
-          📁 Saved Quotes (<span id="gen-quotes-count">0</span>)
+        <button type="button" class="btn-callout-saved-quotes" id="btn-gen-saved-quotes">
+          📁 <span data-i18n="gen_view_saved_quotes">Saved Quotes</span> (<span id="gen-quotes-count">0</span>)
         </button>
       </div>
 
@@ -748,6 +831,9 @@
           <button type="button" class="btn-action" id="btn-view-saved-quotes" data-i18n="btn_view_saved_quotes">
             📁 Saved Quotes
           </button>
+          <button type="button" class="btn-action btn-open-catalog-action" id="btn-open-catalog" data-i18n="btn_item_catalog">
+            📦 Item Catalog
+          </button>
           <button type="button" class="btn-action" id="btn-print-pdf" data-i18n="btn_print">
             🖨️ Print / PDF
           </button>
@@ -848,9 +934,14 @@
               </tbody>
             </table>
 
-            <button type="button" class="btn-add-line no-print" id="btn-add-material" data-i18n="btn_add_material">
-              + Add material line
-            </button>
+            <div class="table-add-actions no-print">
+              <button type="button" class="btn-add-line" id="btn-add-material" data-i18n="btn_add_material">
+                + Add material line
+              </button>
+              <button type="button" class="btn-add-line btn-from-catalog" id="btn-catalog-materials" data-i18n="btn_from_catalog">
+                📦 From Catalog
+              </button>
+            </div>
           </section>
 
           <!-- Labour Section -->
@@ -874,9 +965,14 @@
               </tbody>
             </table>
 
-            <button type="button" class="btn-add-line no-print" id="btn-add-labour" data-i18n="btn_add_labour">
-              + Add labour line
-            </button>
+            <div class="table-add-actions no-print">
+              <button type="button" class="btn-add-line" id="btn-add-labour" data-i18n="btn_add_labour">
+                + Add labour line
+              </button>
+              <button type="button" class="btn-add-line btn-from-catalog" id="btn-catalog-labour" data-i18n="btn_from_catalog">
+                📦 From Catalog
+              </button>
+            </div>
           </section>
 
           <!-- Financial Calculation Summary -->

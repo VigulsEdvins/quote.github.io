@@ -47,7 +47,10 @@
       payment_terms: ''
     },
     savedQuotes: [],
-    currentQuoteId: null
+    currentQuoteId: null,
+    catalog: [],
+    catalogFilter: 'all',
+    catalogSearch: ''
   };
 
   // Currency symbols map
@@ -442,6 +445,7 @@
   function init() {
     loadProfileFromStorageOrUrl();
     loadSavedQuotesFromStorage();
+    loadCatalogFromStorage();
     syncSetupFormFromState();
     
     // Apply current language translations
@@ -518,6 +522,312 @@
     } catch (e) {
       console.warn('Storage not accessible', e);
     }
+  }
+
+  // --- REUSABLE ITEM & PRICE CATALOG ---
+  const STORAGE_KEY_CATALOG = 'quote_writer_item_catalog';
+
+  const DEFAULT_CATALOG_ITEMS = [
+    {
+      id: 'cat_mat_1',
+      name: 'Premium Composite Decking Boards',
+      type: 'material',
+      sub: 'Charcoal / Teak finish, anti-slip UV resistant (3.6m board)',
+      qty: '24 boards',
+      price: 45
+    },
+    {
+      id: 'cat_mat_2',
+      name: 'Treated Timber Sub-Frame Joists (C24)',
+      type: 'material',
+      sub: '47x150mm pressure treated structural joists (4.8m lengths)',
+      qty: '18 lengths',
+      price: 28
+    },
+    {
+      id: 'cat_mat_3',
+      name: 'Moisture-Resistant Gypsum Board 12.5mm',
+      type: 'material',
+      sub: 'Green drywall boards for bathrooms/kitchens (1200x2400mm)',
+      qty: '15 sheets',
+      price: 16.5
+    },
+    {
+      id: 'cat_mat_4',
+      name: 'Large Format Porcelain Floor Tiles',
+      type: 'material',
+      sub: '600x600mm rectified edge, matte stone finish (Grade 5)',
+      qty: '25 m²',
+      price: 38
+    },
+    {
+      id: 'cat_mat_5',
+      name: 'Dulux Diamond Trade Matt Paint (5L)',
+      type: 'material',
+      sub: 'Scuff-resistant scrubbable interior wall emulsion (White/Tint)',
+      qty: '3 cans',
+      price: 52
+    },
+    {
+      id: 'cat_mat_6',
+      name: 'Stainless Steel Deck Screws & Hidden Clips',
+      type: 'material',
+      sub: 'A4 Marine grade corrosion-resistant box of 500 pcs',
+      qty: '2 boxes',
+      price: 34
+    },
+    {
+      id: 'cat_lab_1',
+      name: 'Master Carpenter / Joiner Daily Rate',
+      type: 'labour',
+      sub: 'Structural framing, custom cabinetry & fine architectural woodwork',
+      qty: '1 day',
+      price: 320
+    },
+    {
+      id: 'cat_lab_2',
+      name: 'Certified Electrician (First & Second Fix)',
+      type: 'labour',
+      sub: 'Circuit wiring, consumer unit, lighting & NICEIC certification',
+      qty: '2 days',
+      price: 380
+    },
+    {
+      id: 'cat_lab_3',
+      name: 'Demolition & Site Strip-Out Crew',
+      type: 'labour',
+      sub: 'Safe removal of existing fittings, debris bagging & skip loading',
+      qty: '1.5 days',
+      price: 240
+    },
+    {
+      id: 'cat_lab_4',
+      name: 'Wall & Floor Tiling Specialist',
+      type: 'labour',
+      sub: 'Substrate prep, tanking/waterproofing, precision tile layout & epoxy grouting',
+      qty: '3 days',
+      price: 310
+    },
+    {
+      id: 'cat_lab_5',
+      name: 'Site Survey & Structural Planning Consultation',
+      type: 'labour',
+      sub: 'Laser measurement, structural feasibility inspection & CAD line plan',
+      qty: 'Half day',
+      price: 190
+    }
+  ];
+
+  function loadCatalogFromStorage() {
+    try {
+      const data = localStorage.getItem(STORAGE_KEY_CATALOG);
+      if (data) {
+        const stored = JSON.parse(data);
+        if (Array.isArray(stored) && stored.length > 0) {
+          state.catalog = stored;
+        } else {
+          state.catalog = [...DEFAULT_CATALOG_ITEMS];
+        }
+      } else {
+        state.catalog = [...DEFAULT_CATALOG_ITEMS];
+        saveCatalogToStorage();
+      }
+    } catch (e) {
+      console.warn('Could not load catalog from storage', e);
+      state.catalog = [...DEFAULT_CATALOG_ITEMS];
+    }
+  }
+
+  function saveCatalogToStorage() {
+    try {
+      localStorage.setItem(STORAGE_KEY_CATALOG, JSON.stringify(state.catalog));
+    } catch (e) {
+      console.warn('Could not save catalog to localStorage', e);
+    }
+  }
+
+  function openCatalogDrawer(category = 'all') {
+    state.catalogFilter = category;
+    const drawer = document.getElementById('catalog-drawer');
+    if (!drawer) return;
+
+    // Highlight correct filter pill
+    document.querySelectorAll('.catalog-filter-pill').forEach(pill => {
+      const cat = pill.getAttribute('data-cat') || 'all';
+      pill.classList.toggle('active', cat === category);
+    });
+
+    // Populate search input if previous search existed
+    const searchInput = document.getElementById('catalog-search-input');
+    const searchClear = document.getElementById('catalog-search-clear');
+    if (searchInput) {
+      searchInput.value = state.catalogSearch || '';
+    }
+    if (searchClear) {
+      searchClear.classList.toggle('hidden', !state.catalogSearch);
+    }
+
+    renderCatalogDrawer();
+    drawer.classList.remove('hidden');
+    drawer.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeCatalogDrawer() {
+    const drawer = document.getElementById('catalog-drawer');
+    if (!drawer) return;
+    drawer.classList.add('hidden');
+    drawer.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  }
+
+  function insertCatalogItemIntoQuote(itemId, btnEl) {
+    const item = state.catalog.find(c => c.id === itemId);
+    if (!item) return;
+
+    const sym = state.profile.currency_symbol || '€';
+    const dict = getDictionary(state.profile.quote_language);
+
+    if (item.type === 'material') {
+      addMaterialRow(item.name, item.sub || '', item.qty || '1 unit', Number(item.price) || 0);
+    } else {
+      addLabourRow(item.name, item.qty || '1 day', Number(item.price) || 0);
+    }
+
+    recalculateTotals();
+    saveCurrentQuote(false);
+
+    // Visual button feedback
+    if (btnEl) {
+      const origHtml = btnEl.innerHTML;
+      btnEl.classList.add('added-flash');
+      btnEl.innerHTML = `✓ ${dict.catalog_btn_added || 'Added'}`;
+      setTimeout(() => {
+        btnEl.classList.remove('added-flash');
+        btnEl.innerHTML = origHtml;
+      }, 1200);
+    }
+
+    showToast(`✓ ${item.name} (${sym}${item.price}) ${dict.toast_item_added || 'added to quote'}`);
+  }
+
+  function addCustomCatalogItem(name, type, sub, qty, price) {
+    const newItem = {
+      id: 'custom_' + Date.now(),
+      name: name.trim(),
+      type: type === 'labour' ? 'labour' : 'material',
+      sub: (sub || '').trim(),
+      qty: (qty || '1 unit').trim(),
+      price: parseFloat(price) || 0,
+      isCustom: true
+    };
+    state.catalog.unshift(newItem);
+    saveCatalogToStorage();
+    renderCatalogDrawer();
+
+    const dict = getDictionary(state.profile.quote_language);
+    showToast(`🎉 ${dict.toast_catalog_created || 'New catalog item saved!'}`);
+  }
+
+  function deleteCatalogItem(itemId) {
+    state.catalog = state.catalog.filter(c => c.id !== itemId);
+    saveCatalogToStorage();
+    renderCatalogDrawer();
+
+    const dict = getDictionary(state.profile.quote_language);
+    showToast(dict.toast_catalog_deleted || 'Item removed from catalog');
+  }
+
+  function renderCatalogDrawer() {
+    const listEl = document.getElementById('catalog-items-list');
+    const emptyEl = document.getElementById('catalog-empty-state');
+    if (!listEl) return;
+
+    const filter = state.catalogFilter || 'all';
+    const search = (state.catalogSearch || '').toLowerCase().trim();
+    const sym = state.profile.currency_symbol || '€';
+    const dict = getDictionary(state.profile.quote_language);
+
+    const allItems = state.catalog || [];
+
+    // Update pill counter badges
+    const countAll = allItems.length;
+    const countMaterials = allItems.filter(i => i.type === 'material').length;
+    const countLabour = allItems.filter(i => i.type === 'labour').length;
+
+    const countAllEl = document.getElementById('count-cat-all');
+    const countMatEl = document.getElementById('count-cat-material');
+    const countLabEl = document.getElementById('count-cat-labour');
+    if (countAllEl) countAllEl.textContent = countAll;
+    if (countMatEl) countMatEl.textContent = countMaterials;
+    if (countLabEl) countLabEl.textContent = countLabour;
+
+    let items = allItems;
+
+    if (filter !== 'all') {
+      items = items.filter(item => item.type === filter);
+    }
+
+    if (search) {
+      items = items.filter(item => {
+        const name = (item.name || '').toLowerCase();
+        const sub = (item.sub || '').toLowerCase();
+        const qty = (item.qty || '').toLowerCase();
+        return name.includes(search) || sub.includes(search) || qty.includes(search);
+      });
+    }
+
+    if (items.length === 0) {
+      listEl.innerHTML = '';
+      if (emptyEl) emptyEl.classList.remove('hidden');
+      return;
+    }
+
+    if (emptyEl) emptyEl.classList.add('hidden');
+
+    listEl.innerHTML = items.map(item => {
+      const isLabour = item.type === 'labour';
+      const tagClass = isLabour ? 'tag-type-labour' : 'tag-type-material';
+      const tagIcon = isLabour ? '⚡' : '🧱';
+      const tagText = isLabour ? (dict.catalog_type_labour || 'Labour') : (dict.catalog_type_material || 'Material');
+      const formattedPrice = typeof item.price === 'number' ? item.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : item.price;
+      const unitText = item.qty ? escapeHtml(item.qty) : (isLabour ? '1 day' : '1 unit');
+
+      return `
+        <div class="catalog-card" data-id="${item.id}" data-type="${item.type}">
+          <div class="catalog-card-header">
+            <span class="catalog-card-type-tag ${tagClass}">${tagIcon} ${tagText}</span>
+            <div class="catalog-card-pricing">
+              <span class="catalog-card-price">${sym}${formattedPrice}</span>
+              <span class="catalog-card-qty">/ ${unitText}</span>
+            </div>
+          </div>
+          <div class="catalog-card-body">
+            <div class="catalog-card-name">${escapeHtml(item.name)}</div>
+            ${item.sub ? `<div class="catalog-card-sub">${escapeHtml(item.sub)}</div>` : ''}
+          </div>
+          <div class="catalog-card-footer">
+            <div class="catalog-card-actions" style="width: 100%; justify-content: flex-end;">
+              ${item.isCustom ? `
+                <button type="button" class="btn-delete-catalog-item" data-action="delete-catalog" data-id="${item.id}" title="${dict.catalog_delete_tip || 'Delete custom item'}" aria-label="Delete">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                </button>
+              ` : ''}
+              <button type="button" class="btn-add-to-quote" data-action="add-to-quote" data-id="${item.id}">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                ${dict.catalog_btn_add || '+ Add to Quote'}
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
   }
 
   // --- SAVED QUOTES PERSISTENCE & MANAGEMENT ---
@@ -1164,6 +1474,11 @@
     if (getCurrentActiveView() === 'quotes') {
       renderQuotesListView();
     }
+
+    // 10. Update catalog drawer items if loaded
+    if (state.catalog && state.catalog.length > 0) {
+      renderCatalogDrawer();
+    }
   }
 
   function updateQuoteForLanguage(lang) {
@@ -1235,6 +1550,10 @@
         const deleteModal = document.getElementById('delete-modal');
         if (deleteModal && !deleteModal.classList.contains('hidden')) {
           closeDeleteConfirm();
+        }
+        const catalogDrawer = document.getElementById('catalog-drawer');
+        if (catalogDrawer && !catalogDrawer.classList.contains('hidden')) {
+          closeCatalogDrawer();
         }
       }
     });
@@ -1560,6 +1879,119 @@
     // Real-time table input / edit listener
     document.getElementById('materials-tbody')?.addEventListener('input', () => recalculateTotals());
     document.getElementById('labour-tbody')?.addEventListener('input', () => recalculateTotals());
+
+    // --- Catalog Drawer Events ---
+    document.getElementById('btn-open-catalog')?.addEventListener('click', () => {
+      openCatalogDrawer('all');
+    });
+
+    document.getElementById('btn-catalog-materials')?.addEventListener('click', () => {
+      openCatalogDrawer('material');
+    });
+
+    document.getElementById('btn-catalog-labour')?.addEventListener('click', () => {
+      openCatalogDrawer('labour');
+    });
+
+    document.getElementById('catalog-drawer-close')?.addEventListener('click', () => {
+      closeCatalogDrawer();
+    });
+
+    const catalogDrawer = document.getElementById('catalog-drawer');
+    catalogDrawer?.addEventListener('click', (e) => {
+      if (e.target === catalogDrawer) {
+        closeCatalogDrawer();
+      }
+    });
+
+    // Category filter pills
+    document.querySelectorAll('.catalog-filter-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        const cat = pill.getAttribute('data-cat') || 'all';
+        openCatalogDrawer(cat);
+      });
+    });
+
+    // Search filter & clear
+    const catalogSearchInput = document.getElementById('catalog-search-input');
+    const catalogSearchClear = document.getElementById('catalog-search-clear');
+
+    catalogSearchInput?.addEventListener('input', (e) => {
+      state.catalogSearch = e.target.value;
+      if (catalogSearchClear) {
+        catalogSearchClear.classList.toggle('hidden', !state.catalogSearch);
+      }
+      renderCatalogDrawer();
+    });
+
+    catalogSearchClear?.addEventListener('click', () => {
+      if (catalogSearchInput) {
+        catalogSearchInput.value = '';
+        state.catalogSearch = '';
+        catalogSearchClear.classList.add('hidden');
+        catalogSearchInput.focus();
+        renderCatalogDrawer();
+      }
+    });
+
+    // Toggle custom item form
+    const btnToggleAdd = document.getElementById('btn-toggle-add-catalog');
+    const catalogAddForm = document.getElementById('catalog-add-form');
+    const catalogAddIcon = document.getElementById('catalog-add-btn-icon');
+    const btnCancelAdd = document.getElementById('btn-cancel-add-catalog');
+
+    btnToggleAdd?.addEventListener('click', () => {
+      if (catalogAddForm) {
+        const isHidden = catalogAddForm.classList.contains('hidden');
+        catalogAddForm.classList.toggle('hidden');
+        if (catalogAddIcon) catalogAddIcon.textContent = isHidden ? '−' : '+';
+        if (isHidden) {
+          document.getElementById('catalog-new-name')?.focus();
+        }
+      }
+    });
+
+    btnCancelAdd?.addEventListener('click', () => {
+      if (catalogAddForm) {
+        catalogAddForm.classList.add('hidden');
+        catalogAddForm.reset();
+        if (catalogAddIcon) catalogAddIcon.textContent = '+';
+      }
+    });
+
+    catalogAddForm?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = document.getElementById('catalog-new-name')?.value || '';
+      const type = document.getElementById('catalog-new-type')?.value || 'material';
+      const sub = document.getElementById('catalog-new-sub')?.value || '';
+      const qty = document.getElementById('catalog-new-qty')?.value || '';
+      const price = document.getElementById('catalog-new-price')?.value || 0;
+
+      if (!name.trim()) return;
+
+      addCustomCatalogItem(name, type, sub, qty, price);
+      catalogAddForm.reset();
+      catalogAddForm.classList.add('hidden');
+      if (catalogAddIcon) catalogAddIcon.textContent = '+';
+    });
+
+    // Delegated clicks inside catalog items list (Add to quote & delete custom)
+    const catalogItemsList = document.getElementById('catalog-items-list');
+    catalogItemsList?.addEventListener('click', (e) => {
+      const addBtn = e.target.closest('[data-action="add-to-quote"]');
+      if (addBtn) {
+        const itemId = addBtn.getAttribute('data-id');
+        if (itemId) insertCatalogItemIntoQuote(itemId, addBtn);
+        return;
+      }
+
+      const delBtn = e.target.closest('[data-action="delete-catalog"]');
+      if (delBtn) {
+        const itemId = delBtn.getAttribute('data-id');
+        if (itemId) deleteCatalogItem(itemId);
+        return;
+      }
+    });
 
     // Privacy modal / alert
     document.getElementById('privacy-link')?.addEventListener('click', (e) => {
