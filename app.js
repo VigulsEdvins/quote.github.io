@@ -45,7 +45,9 @@
       included: [],
       excluded: [],
       payment_terms: ''
-    }
+    },
+    savedQuotes: [],
+    currentQuoteId: null
   };
 
   // Currency symbols map
@@ -72,13 +74,15 @@
     setup: document.getElementById('view-setup'),
     generator: document.getElementById('view-generator'),
     loading: document.getElementById('view-loading'),
-    quote: document.getElementById('view-quote')
+    quote: document.getElementById('view-quote'),
+    quotes: document.getElementById('view-quotes')
   };
 
   const navTabs = {
     setup: document.getElementById('nav-setup-tab'),
     generator: document.getElementById('nav-gen-tab'),
-    quote: document.getElementById('nav-quote-tab')
+    quote: document.getElementById('nav-quote-tab'),
+    quotes: document.getElementById('nav-quotes-tab')
   };
 
   const toastEl = document.getElementById('toast');
@@ -437,6 +441,7 @@
   // --- INITIALIZATION ---
   function init() {
     loadProfileFromStorageOrUrl();
+    loadSavedQuotesFromStorage();
     syncSetupFormFromState();
     
     // Apply current language translations
@@ -455,6 +460,8 @@
     } else if (urlParams.get('step') === 'quote') {
       generateSampleQuote(false);
       switchView('quote');
+    } else if (urlParams.get('step') === 'quotes') {
+      switchView('quotes');
     } else if (urlParams.get('step') === 'generator' || urlParams.get('p') || localStorage.getItem('quote_writer_has_setup') === 'true') {
       updateGeneratorViewGreeting();
       switchView('generator');
@@ -471,8 +478,8 @@
 
   // --- VIEW NAVIGATION ---
   function switchView(viewName) {
-    Object.keys(views).forEach(k => views[k].classList.remove('active'));
-    Object.keys(navTabs).forEach(k => navTabs[k].classList.remove('active'));
+    Object.keys(views).forEach(k => views[k]?.classList.remove('active'));
+    Object.keys(navTabs).forEach(k => navTabs[k]?.classList.remove('active'));
 
     if (views[viewName]) {
       views[viewName].classList.add('active');
@@ -485,6 +492,8 @@
 
     if (viewName === 'generator') {
       updatePersonalUrlDisplays();
+    } else if (viewName === 'quotes') {
+      renderQuotesListView();
     }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -509,6 +518,431 @@
     } catch (e) {
       console.warn('Storage not accessible', e);
     }
+  }
+
+  // --- SAVED QUOTES PERSISTENCE & MANAGEMENT ---
+  const STORAGE_KEY_SAVED_QUOTES = 'quote_writer_saved_quotes';
+
+  function loadSavedQuotesFromStorage() {
+    try {
+      const data = localStorage.getItem(STORAGE_KEY_SAVED_QUOTES);
+      if (data) {
+        state.savedQuotes = JSON.parse(data);
+        if (!Array.isArray(state.savedQuotes)) {
+          state.savedQuotes = [];
+        }
+      } else {
+        state.savedQuotes = [];
+      }
+    } catch (e) {
+      console.warn('Could not load saved quotes', e);
+      state.savedQuotes = [];
+    }
+    updateNavQuotesCount();
+  }
+
+  function saveQuotesToStorage() {
+    try {
+      localStorage.setItem(STORAGE_KEY_SAVED_QUOTES, JSON.stringify(state.savedQuotes));
+    } catch (e) {
+      console.warn('Could not save quotes to localStorage', e);
+    }
+    updateNavQuotesCount();
+  }
+
+  function updateNavQuotesCount() {
+    const count = state.savedQuotes ? state.savedQuotes.length : 0;
+    const navBadge = document.getElementById('nav-quotes-count');
+    if (navBadge) {
+      navBadge.textContent = String(count);
+      if (count === 0) {
+        navBadge.classList.add('empty');
+      } else {
+        navBadge.classList.remove('empty');
+      }
+    }
+    const genCount = document.getElementById('gen-quotes-count');
+    if (genCount) {
+      genCount.textContent = String(count);
+    }
+  }
+
+  function saveCurrentQuote(showFeedback = false) {
+    const lang = state.profile.quote_language || 'English';
+    const dict = getDictionary(lang);
+
+    // Scrape whatever is current in the sheet DOM
+    const number = document.getElementById('doc-quote-number')?.textContent.trim() || state.quote.number;
+    const date = document.getElementById('doc-quote-date')?.textContent.trim() || state.quote.date;
+    const valid_days = document.getElementById('doc-quote-valid')?.textContent.trim() || state.quote.valid_days;
+    const quote_for = document.getElementById('doc-quote-for')?.textContent.trim() || state.quote.quote_for;
+    const reference = document.getElementById('doc-reference')?.textContent.trim() || state.quote.reference;
+    const project_title = document.getElementById('doc-project-title')?.textContent.trim() || state.quote.project_title;
+    const cover_note = document.getElementById('doc-cover-note-text')?.textContent.trim().replace(/^"|"$/g, '') || state.quote.cover_note || '';
+    const payment_terms = document.getElementById('doc-payment-terms-text')?.textContent.trim() || state.quote.payment_terms || '';
+
+    // Materials
+    const materials = [];
+    document.querySelectorAll('#materials-tbody tr').forEach(tr => {
+      const name = tr.querySelector('.item-main-text')?.textContent.trim() || '';
+      const sub = tr.querySelector('.item-sub-text')?.textContent.trim() || '';
+      const qty = tr.querySelector('.col-qty')?.textContent.trim() || '';
+      const amount = parseAmount(tr.querySelector('.col-amount')?.textContent);
+      if (name || amount > 0) {
+        materials.push({ name, sub, qty, amount });
+      }
+    });
+
+    // Labour
+    const labour = [];
+    document.querySelectorAll('#labour-tbody tr').forEach(tr => {
+      const phase = tr.querySelector('.item-main-text')?.textContent.trim() || '';
+      const duration = tr.querySelector('.col-duration')?.textContent.trim() || '';
+      const amount = parseAmount(tr.querySelector('.col-amount')?.textContent);
+      if (phase || amount > 0) {
+        labour.push({ phase, duration, amount });
+      }
+    });
+
+    // Inclusions & Exclusions
+    const included = [];
+    document.querySelectorAll('#scope-included-list li .bullet-text').forEach(el => {
+      const t = el.textContent.trim();
+      if (t) included.push(t);
+    });
+
+    const excluded = [];
+    document.querySelectorAll('#scope-excluded-list li .bullet-text').forEach(el => {
+      const t = el.textContent.trim();
+      if (t) excluded.push(t);
+    });
+
+    // Totals
+    const materialsSubtotal = parseAmount(document.getElementById('summary-materials-subtotal')?.textContent);
+    const labourSubtotal = parseAmount(document.getElementById('summary-labour-subtotal')?.textContent);
+    const subtotal = parseAmount(document.getElementById('summary-subtotal')?.textContent);
+    const vatAmount = parseAmount(document.getElementById('summary-vat-amount')?.textContent);
+    const grandTotal = parseAmount(document.getElementById('summary-grand-total')?.textContent);
+    const formattedGrandTotal = document.getElementById('summary-grand-total')?.textContent.trim() || formatAmount(grandTotal);
+
+    // Update state.quote memory
+    state.quote.number = number;
+    state.quote.date = date;
+    state.quote.valid_days = valid_days;
+    state.quote.quote_for = quote_for;
+    state.quote.reference = reference;
+    state.quote.project_title = project_title;
+    state.quote.cover_note = cover_note;
+    state.quote.payment_terms = payment_terms;
+    state.quote.materials = materials;
+    state.quote.labour = labour;
+    state.quote.included = included;
+    state.quote.excluded = excluded;
+
+    let quoteEntry = null;
+    let isUpdate = false;
+
+    if (state.currentQuoteId) {
+      const idx = state.savedQuotes.findIndex(q => q.id === state.currentQuoteId);
+      if (idx !== -1) {
+        isUpdate = true;
+        quoteEntry = state.savedQuotes[idx];
+      }
+    }
+
+    if (!quoteEntry) {
+      const newId = 'q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+      quoteEntry = {
+        id: newId,
+        status: 'Draft',
+        createdAt: Date.now()
+      };
+      state.currentQuoteId = newId;
+      state.savedQuotes.unshift(quoteEntry);
+    }
+
+    quoteEntry.number = number;
+    quoteEntry.date = date;
+    quoteEntry.valid_days = valid_days;
+    quoteEntry.quote_for = quote_for;
+    quoteEntry.reference = reference;
+    quoteEntry.project_title = project_title;
+    quoteEntry.cover_note = cover_note;
+    quoteEntry.payment_terms = payment_terms;
+    quoteEntry.materials = materials;
+    quoteEntry.labour = labour;
+    quoteEntry.included = included;
+    quoteEntry.excluded = excluded;
+    quoteEntry.job_preset = state.quote.job_preset || 'deck';
+    quoteEntry.currency = state.profile.currency || 'EUR';
+    quoteEntry.currency_symbol = state.profile.currency_symbol || '€';
+    quoteEntry.vat_rate = state.profile.vat_rate || 21;
+    quoteEntry.totals = {
+      materialsSubtotal,
+      labourSubtotal,
+      subtotal,
+      vatAmount,
+      grandTotal,
+      formattedGrandTotal
+    };
+    quoteEntry.updatedAt = Date.now();
+
+    saveQuotesToStorage();
+
+    if (showFeedback) {
+      const btn = document.getElementById('btn-save-quote');
+      if (btn) {
+        btn.classList.add('saved-flash');
+        setTimeout(() => btn.classList.remove('saved-flash'), 600);
+      }
+      showToast(isUpdate ? (dict.toast_quote_updated || '💾 Quote updated successfully!') : (dict.toast_quote_saved || '💾 Quote saved to your list!'));
+    }
+
+    return quoteEntry;
+  }
+
+  function loadQuoteById(id) {
+    const quote = state.savedQuotes.find(q => q.id === id);
+    if (!quote) return;
+
+    state.currentQuoteId = quote.id;
+    state.quote = JSON.parse(JSON.stringify(quote));
+    if (!state.quote.job_preset) state.quote.job_preset = 'deck';
+
+    hasGeneratedQuote = true;
+    renderQuoteDocument();
+    navTabs.quote.removeAttribute('disabled');
+    switchView('quote');
+    const lang = state.profile.quote_language || 'English';
+    const dict = getDictionary(lang);
+    showToast(`📑 ${dict.quote_badge || 'Quote'} #${quote.number}`);
+  }
+
+  function duplicateQuote(id) {
+    const quote = state.savedQuotes.find(q => q.id === id);
+    if (!quote) return;
+
+    const currentYear = new Date().getFullYear();
+    const randomNum = String(Math.floor(Math.random() * 900) + 100).padStart(4, '0');
+    const newNumber = `${currentYear}-${randomNum}`;
+    const newId = 'q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+
+    const lang = state.profile.quote_language || 'English';
+    const langConfig = LANG_MAP[lang] || { code: 'en', locale: 'en-GB' };
+    const dateOptions = { day: 'numeric', month: 'short', year: 'numeric' };
+    const todayStr = new Date().toLocaleDateString(langConfig.locale, dateOptions);
+
+    const copy = JSON.parse(JSON.stringify(quote));
+    copy.id = newId;
+    copy.number = newNumber;
+    copy.date = todayStr;
+    copy.project_title = `${copy.project_title} (Copy)`;
+    copy.status = 'Draft';
+    copy.createdAt = Date.now();
+    copy.updatedAt = Date.now();
+
+    state.savedQuotes.unshift(copy);
+    saveQuotesToStorage();
+    renderQuotesListView();
+
+    const dict = getDictionary(lang);
+    showToast(`📋 ${copy.number} created from #${quote.number}`);
+  }
+
+  let quoteIdToDelete = null;
+  function openDeleteConfirm(id) {
+    quoteIdToDelete = id;
+    const deleteModal = document.getElementById('delete-modal');
+    if (deleteModal) {
+      deleteModal.classList.remove('hidden');
+    }
+  }
+
+  function closeDeleteConfirm() {
+    quoteIdToDelete = null;
+    const deleteModal = document.getElementById('delete-modal');
+    if (deleteModal) {
+      deleteModal.classList.add('hidden');
+    }
+  }
+
+  function confirmDeleteQuote() {
+    if (!quoteIdToDelete) return;
+    const idx = state.savedQuotes.findIndex(q => q.id === quoteIdToDelete);
+    if (idx !== -1) {
+      state.savedQuotes.splice(idx, 1);
+      if (state.currentQuoteId === quoteIdToDelete) {
+        state.currentQuoteId = null;
+      }
+      saveQuotesToStorage();
+      renderQuotesListView();
+      const lang = state.profile.quote_language || 'English';
+      const dict = getDictionary(lang);
+      showToast(dict.toast_quote_deleted || '🗑️ Quote deleted.');
+    }
+    closeDeleteConfirm();
+  }
+
+  function cycleQuoteStatus(id) {
+    const quote = state.savedQuotes.find(q => q.id === id);
+    if (!quote) return;
+    const statuses = ['Draft', 'Sent', 'Accepted'];
+    const currentIdx = statuses.indexOf(quote.status || 'Draft');
+    const nextStatus = statuses[(currentIdx + 1) % statuses.length];
+    quote.status = nextStatus;
+    quote.updatedAt = Date.now();
+    saveQuotesToStorage();
+    renderQuotesListView();
+  }
+
+  function exportQuotesJson() {
+    if (!state.savedQuotes || state.savedQuotes.length === 0) {
+      showToast('No saved quotes to export.');
+      return;
+    }
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state.savedQuotes, null, 2));
+    const a = document.createElement('a');
+    a.setAttribute("href", dataStr);
+    a.setAttribute("download", `quotes_export_${new Date().toISOString().slice(0, 10)}.json`);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    showToast('⬇ Saved quotes exported as JSON!');
+  }
+
+  function renderQuotesListView() {
+    const lang = state.profile.quote_language || 'English';
+    const dict = getDictionary(lang);
+    const sym = state.profile.currency_symbol || '€';
+
+    const searchInput = document.getElementById('quotes-search-input');
+    const searchClear = document.getElementById('quotes-search-clear');
+    const query = (searchInput?.value || '').toLowerCase().trim();
+
+    if (searchClear) {
+      searchClear.classList.toggle('hidden', !query);
+    }
+
+    const statusFilter = document.getElementById('quotes-status-filter')?.value || 'all';
+    const sortBy = document.getElementById('quotes-sort-select')?.value || 'newest';
+
+    const totalCount = state.savedQuotes.length;
+    let totalPipeline = 0;
+    state.savedQuotes.forEach(q => {
+      totalPipeline += (q.totals?.grandTotal || 0);
+    });
+    const avgPipeline = totalCount > 0 ? Math.round(totalPipeline / totalCount) : 0;
+
+    // Update metrics bar
+    setText('metric-total-count', String(totalCount));
+    setText('metric-total-value', `${sym}${formatWithSpaces(totalPipeline)}`);
+    setText('metric-avg-value', `${sym}${formatWithSpaces(avgPipeline)}`);
+
+    // Filter
+    let filtered = state.savedQuotes.filter(q => {
+      if (statusFilter !== 'all' && q.status !== statusFilter) {
+        return false;
+      }
+      if (query) {
+        const text = `${q.number || ''} ${q.quote_for || ''} ${q.project_title || ''} ${q.reference || ''}`.toLowerCase();
+        if (!text.includes(query)) return false;
+      }
+      return true;
+    });
+
+    // Sort
+    if (sortBy === 'newest') {
+      filtered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    } else if (sortBy === 'oldest') {
+      filtered.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+    } else if (sortBy === 'highest') {
+      filtered.sort((a, b) => ((b.totals?.grandTotal) || 0) - ((a.totals?.grandTotal) || 0));
+    } else if (sortBy === 'lowest') {
+      filtered.sort((a, b) => ((a.totals?.grandTotal) || 0) - ((b.totals?.grandTotal) || 0));
+    }
+
+    const listContainer = document.getElementById('quotes-list-container');
+    const emptyState = document.getElementById('quotes-empty-state');
+    const emptyTitle = document.getElementById('empty-state-title');
+    const emptyDesc = document.getElementById('empty-state-desc');
+
+    if (!listContainer || !emptyState) return;
+
+    if (filtered.length === 0) {
+      listContainer.innerHTML = '';
+      emptyState.classList.remove('hidden');
+      if (query || statusFilter !== 'all') {
+        emptyTitle.textContent = 'No matching quotes';
+        emptyDesc.textContent = 'No quotes match your current filter or search criteria.';
+      } else {
+        emptyTitle.textContent = dict.empty_quotes_title || 'No saved quotes yet';
+        emptyDesc.textContent = dict.empty_quotes_desc || 'Quotes you create or save will appear here so you can easily manage, re-open, or duplicate them anytime.';
+      }
+      return;
+    }
+
+    emptyState.classList.add('hidden');
+    listContainer.innerHTML = '';
+
+    filtered.forEach(q => {
+      const card = document.createElement('div');
+      card.className = 'quote-item-card';
+
+      const statusLower = (q.status || 'Draft').toLowerCase();
+      const statusLabel = q.status === 'Sent' ? (dict.status_sent || 'Sent') :
+                          q.status === 'Accepted' ? (dict.status_accepted || 'Accepted') :
+                          (dict.status_draft || 'Draft');
+
+      const matCount = q.materials?.length || 0;
+      const labCount = q.labour?.length || 0;
+      const formattedTotal = q.totals?.formattedGrandTotal || `${sym}${formatWithSpaces(q.totals?.grandTotal || 0)}`;
+
+      card.innerHTML = `
+        <div class="quote-card-header">
+          <div class="quote-header-left">
+            <span class="quote-number-badge">#${escapeHtml(q.number)}</span>
+            <span class="status-badge status-${statusLower}" data-id="${q.id}" title="Click to change status">
+              ● ${escapeHtml(statusLabel)}
+            </span>
+          </div>
+          <div class="quote-date-text">
+            <span>📅</span> ${escapeHtml(q.date)}
+          </div>
+        </div>
+        <div class="quote-card-body">
+          <div class="quote-client-row">
+            <span class="quote-client-name">👤 ${escapeHtml(q.quote_for && q.quote_for !== '—' ? q.quote_for : 'General Client')}</span>
+            ${q.reference && q.reference !== '—' ? `<span class="quote-ref-tag">${escapeHtml(q.reference)}</span>` : ''}
+          </div>
+          <div class="quote-project-title">${escapeHtml(q.project_title)}</div>
+          <div class="quote-breakdown-meta">
+            ${matCount} items · ${labCount} labour phases
+          </div>
+        </div>
+        <div class="quote-card-footer">
+          <div class="quote-total-group">
+            <span class="quote-total-label">${dict.summary_total || 'TOTAL'}</span>
+            <span class="quote-total-amount">${escapeHtml(formattedTotal)}</span>
+          </div>
+          <div class="quote-card-actions">
+            <button type="button" class="btn-card-action btn-action-open" data-action="open" data-id="${q.id}">
+              👁️ ${dict.btn_card_open || 'Open'}
+            </button>
+            <button type="button" class="btn-card-action" data-action="duplicate" data-id="${q.id}">
+              📋 ${dict.btn_card_duplicate || 'Duplicate'}
+            </button>
+            <button type="button" class="btn-card-action" data-action="print" data-id="${q.id}">
+              🖨️
+            </button>
+            <button type="button" class="btn-card-action btn-action-delete" data-action="delete" data-id="${q.id}">
+              🗑️
+            </button>
+          </div>
+        </div>
+      `;
+
+      listContainer.appendChild(card);
+    });
   }
 
   function loadProfileFromStorageOrUrl() {
@@ -724,6 +1158,12 @@
 
     // 8. If quote is currently generated or stored, translate the quote document
     updateQuoteForLanguage(lang);
+
+    // 9. Update quotes count badge & list if currently visible
+    updateNavQuotesCount();
+    if (getCurrentActiveView() === 'quotes') {
+      renderQuotesListView();
+    }
   }
 
   function updateQuoteForLanguage(lang) {
@@ -761,6 +1201,7 @@
     navTabs.setup.addEventListener('click', () => trySwitchView('setup'));
     navTabs.generator.addEventListener('click', () => trySwitchView('generator'));
     navTabs.quote.addEventListener('click', () => trySwitchView('quote'));
+    navTabs.quotes?.addEventListener('click', () => trySwitchView('quotes'));
 
     document.getElementById('nav-brand-btn')?.addEventListener('click', () => {
       trySwitchView(localStorage.getItem('quote_writer_has_setup') === 'true' ? 'generator' : 'setup');
@@ -786,9 +1227,15 @@
     });
 
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && unsavedModal && !unsavedModal.classList.contains('hidden')) {
-        hideUnsavedModal();
-        pendingNav = null;
+      if (e.key === 'Escape') {
+        if (unsavedModal && !unsavedModal.classList.contains('hidden')) {
+          hideUnsavedModal();
+          pendingNav = null;
+        }
+        const deleteModal = document.getElementById('delete-modal');
+        if (deleteModal && !deleteModal.classList.contains('hidden')) {
+          closeDeleteConfirm();
+        }
       }
     });
 
@@ -977,7 +1424,100 @@
       });
     }
 
+    document.getElementById('btn-save-quote')?.addEventListener('click', () => {
+      saveCurrentQuote(true);
+    });
+
+    document.getElementById('btn-view-saved-quotes')?.addEventListener('click', () => {
+      saveCurrentQuote(false);
+      trySwitchView('quotes');
+    });
+
+    document.getElementById('btn-gen-saved-quotes')?.addEventListener('click', () => {
+      trySwitchView('quotes');
+    });
+
+    document.getElementById('btn-create-quote-top')?.addEventListener('click', () => {
+      state.currentQuoteId = null;
+      trySwitchView('generator');
+    });
+
+    document.getElementById('btn-empty-create-quote')?.addEventListener('click', () => {
+      state.currentQuoteId = null;
+      trySwitchView('generator');
+    });
+
+    document.getElementById('btn-export-quotes')?.addEventListener('click', () => {
+      exportQuotesJson();
+    });
+
+    const quotesSearchInput = document.getElementById('quotes-search-input');
+    quotesSearchInput?.addEventListener('input', () => {
+      renderQuotesListView();
+    });
+
+    document.getElementById('quotes-search-clear')?.addEventListener('click', () => {
+      if (quotesSearchInput) {
+        quotesSearchInput.value = '';
+      }
+      renderQuotesListView();
+    });
+
+    document.getElementById('quotes-status-filter')?.addEventListener('change', () => {
+      renderQuotesListView();
+    });
+
+    document.getElementById('quotes-sort-select')?.addEventListener('change', () => {
+      renderQuotesListView();
+    });
+
+    const quotesListContainer = document.getElementById('quotes-list-container');
+    quotesListContainer?.addEventListener('click', (e) => {
+      const statusBadge = e.target.closest('.status-badge');
+      if (statusBadge) {
+        const id = statusBadge.getAttribute('data-id');
+        if (id) cycleQuoteStatus(id);
+        return;
+      }
+
+      const btn = e.target.closest('.btn-card-action');
+      if (!btn) return;
+      const action = btn.getAttribute('data-action');
+      const id = btn.getAttribute('data-id');
+      if (!id) return;
+
+      if (action === 'open') {
+        loadQuoteById(id);
+      } else if (action === 'duplicate') {
+        duplicateQuote(id);
+      } else if (action === 'print') {
+        loadQuoteById(id);
+        setTimeout(() => {
+          window.print();
+        }, 350);
+      } else if (action === 'delete') {
+        openDeleteConfirm(id);
+      }
+    });
+
+    const deleteModal = document.getElementById('delete-modal');
+    document.getElementById('modal-btn-confirm-delete')?.addEventListener('click', () => {
+      confirmDeleteQuote();
+    });
+    document.getElementById('modal-btn-cancel-delete')?.addEventListener('click', () => {
+      closeDeleteConfirm();
+    });
+    document.getElementById('delete-modal-close')?.addEventListener('click', () => {
+      closeDeleteConfirm();
+    });
+    deleteModal?.addEventListener('click', (e) => {
+      if (e.target === deleteModal) {
+        closeDeleteConfirm();
+      }
+    });
+
     document.getElementById('btn-new-quote')?.addEventListener('click', () => {
+      state.currentQuoteId = null;
       trySwitchView('generator');
     });
 
@@ -1058,6 +1598,7 @@
       buildQuoteFromForm();
       hasGeneratedQuote = true;
       step2Snapshot = getGeneratorFormSnapshot();
+      saveCurrentQuote(false);
       switchView('quote');
       navTabs.quote.removeAttribute('disabled');
       showToast(dict.toast_quote_ready || '✅ Your quote is ready! Click any line to edit.');
